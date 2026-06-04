@@ -75,18 +75,31 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-import dj_database_url
 import os
+import dj_database_url
 
-# Buscamos la URL en el sistema, si no existe (en tu compu local), 
-# usamos una por defecto o mantenemos la tuya local actual
+# 1. Seguridad: Desactivar DEBUG en producción
+DEBUG = os.environ.get('RENDER') is None
+
+# 2. Hosts permitidos: Render te pedirá esto
+ALLOWED_HOSTS = ['rugby-manager-back.onrender.com', 'localhost', '127.0.0.1']
+
+# 3. Base de Datos dinámica
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://postgres.cgpttvwnjrbriqisrrdt:*rzV-PL6rV5G_@A@aws-1-sa-east-1.pooler.supabase.com:6543/postgres',
+        default=os.environ.get('postgresql://postgres.cgpttvwnjrbriqisrrdt:*rzV-PL6rV5G_@A@aws-1-sa-east-1.pooler.supabase.com:6543/postgres'), # Render usará esto
         conn_max_age=600
     )
 }
 
+# 4. CORS (Para que el Vercel de adelante pueda hablar con este back)
+INSTALLED_APPS.append('corsheaders')
+MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
+
+CORS_ALLOWED_ORIGINS = [
+    "https://rugbymanager.vercel.app", # Tu URL de Vercel
+    "http://localhost:5173",           # Tu local
+]
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
