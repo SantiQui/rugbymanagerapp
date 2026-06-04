@@ -82,8 +82,11 @@ import dj_database_url
 DEBUG = os.environ.get('RENDER') is None
 
 # 2. Hosts permitidos: Render te pedirá esto
-ALLOWED_HOSTS = ['rugby-manager-back.onrender.com', 'localhost', '127.0.0.1']
-
+ALLOWED_HOSTS = [
+    'rugbymanagerapp.onrender.com', 
+    'localhost', 
+    '127.0.0.1'
+]
 DATABASES = {
     'default': dj_database_url.config(
         default='postgresql://postgres.cgpttvwnjrbriqisrrdt:*rzV-PL6rV5G_@A@aws-1-sa-east-1.pooler.supabase.com:6543/postgres', 
