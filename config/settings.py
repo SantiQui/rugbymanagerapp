@@ -92,10 +92,6 @@ DATABASES = {
 }
 # 4. CORS (Para que el Vercel de adelante pueda hablar con este back)
 
-CORS_ALLOWED_ORIGINS = [
-    "https://rugbymanager.vercel.app", # Tu URL de Vercel
-    "http://localhost:5173",           # Tu local
-]
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
