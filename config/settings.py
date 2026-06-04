@@ -75,17 +75,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'rugby_db',       
-        'USER': 'postgres',       
-        'PASSWORD': 'Santiago#2026',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+import dj_database_url
+import os
 
+# Buscamos la URL en el sistema, si no existe (en tu compu local), 
+# usamos una por defecto o mantenemos la tuya local actual
+DATABASES = {
+    'default': dj_database_url.config(
+        default='postgresql://postgres.cgpttvwnjrbriqisrrdt:*rzV-PL6rV5G_@A@aws-1-sa-east-1.pooler.supabase.com:6543/postgres',
+        conn_max_age=600
+    )
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
