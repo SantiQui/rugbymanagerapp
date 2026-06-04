@@ -20,6 +20,7 @@ class ManagerSchema(PersonBaseSchema):
 
 class ProfessorSchema(PersonBaseSchema):
     categorias: List[str]
+
 class FichajeInstallmentSchema(Schema):
     id: str
     numeroCuota: int
@@ -34,7 +35,7 @@ class PlayerSchema(PersonBaseSchema):
     fichaMedicaUrl: Optional[str] = None
     fichaMedicaNombre: Optional[str] = None
     fichaMedicaFecha: Optional[str] = None
-    justificaciones: Optional[List[Dict[str, Any]]] = []
+    justificaciones: Optional[list] = []
     fichajeInstalments: Optional[List[FichajeInstallmentSchema]] = []
 
 # Esquemas de Entidades Operativas
@@ -48,17 +49,17 @@ class MatchSchema(Schema):
     estado: str
     resultadoClub: Optional[int] = None
     resultadoRival: Optional[int] = None
-    titulares: List[str]
-    suplentes: List[str]
-    estadisticas: Dict[str, Any]
+    titulares: Optional[List[str]] = []
+    suplentes: Optional[List[str]] = []
+    estadisticas: Optional[Dict[str, Any]] = {}
 
 class RoutineSchema(Schema):
     id: Optional[str] = None
     titulo: str
-    descripcion: str
-    ejercicios: List[Dict[str, str]]
-    profesorId: str
-    profesorNombre: str
+    descripcion: Optional[str] = ""
+    ejercicios: Optional[List[Dict[str, str]]] = []
+    profesorId: Optional[str] = None
+    profesorNombre: Optional[str] = None
     jugadorId: Optional[str] = None
     posicion: Optional[str] = None
     fechaAsignacion: str
@@ -66,9 +67,9 @@ class RoutineSchema(Schema):
 class AttendanceSchema(Schema):
     id: Optional[str] = None
     fecha: str
-    tipo: str
+    tipo: Optional[str] = None
     categoria: str
-    asistentes: List[str]
+    asistentes: Optional[List[str]] = []
     justificados: Optional[List[str]] = []
 
 class CampaignSchema(Schema):

@@ -24,10 +24,7 @@ def save_user_profile(data, role):
     user.first_name = data.nombre
     user.last_name = data.apellido
     user.email = data.correo
-    
-    # ACÁ ESTÁ LA MAGIA: Seteamos la contraseña igual al documento
     user.set_password(data.documento) 
-    
     user.save()
 
     profile, _ = UserProfile.objects.get_or_create(user=user)
@@ -42,14 +39,9 @@ def save_user_profile(data, role):
 def get_managers(request):
     profiles = UserProfile.objects.filter(role='manager')
     return [{
-        "id": str(p.id), 
-        "nombre": p.user.first_name, 
-        "apellido": p.user.last_name, 
-        "documento": p.documento, 
-        "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
-        "telefono": p.telefono, 
-        "correo": p.user.email, 
-        "categorias": p.categorias
+        "id": str(p.id), "nombre": p.user.first_name, "apellido": p.user.last_name, 
+        "documento": p.documento, "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
+        "telefono": p.telefono, "correo": p.user.email, "categorias": getattr(p, 'categorias', [])
     } for p in profiles]
 
 @router.post("/managers")
@@ -64,14 +56,9 @@ def save_manager(request, data: ManagerSchema):
 def get_professors(request):
     profiles = UserProfile.objects.filter(role='profesor')
     return [{
-        "id": str(p.id), 
-        "nombre": p.user.first_name, 
-        "apellido": p.user.last_name, 
-        "documento": p.documento, 
-        "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
-        "telefono": p.telefono, 
-        "correo": p.user.email, 
-        "categorias": p.categorias
+        "id": str(p.id), "nombre": p.user.first_name, "apellido": p.user.last_name, 
+        "documento": p.documento, "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
+        "telefono": p.telefono, "correo": p.user.email, "categorias": getattr(p, 'categorias', [])
     } for p in profiles]
 
 @router.post("/professors")
@@ -81,23 +68,16 @@ def save_professor(request, data: ProfessorSchema):
     profile.save()
     return {"success": True}
 
-# ==================== JUGADORES ====================
+# ==================== JUGADORES (ACÁ ESTABA EL ERROR DE CUOTAS) ====================
 @router.get("/players", response=List[PlayerSchema])
 def get_players(request):
     profiles = UserProfile.objects.filter(role='jugador')
     return [{
-        "id": str(p.id), 
-        "nombre": p.user.first_name, 
-        "apellido": p.user.last_name, 
-        "documento": p.documento, 
-        "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
-        "telefono": p.telefono if p.telefono else "", 
-        "correo": p.user.email, 
-        
-        # EL SALVACAÍDAS: Si es None, devolvemos un string vacío
+        "id": str(p.id), "nombre": p.user.first_name, "apellido": p.user.last_name, 
+        "documento": p.documento, "fecha_nacimiento": str(p.fecha_nacimiento) if p.fecha_nacimiento else "", 
+        "telefono": p.telefono if p.telefono else "", "correo": p.user.email, 
         "categoria": p.categoria if p.categoria else "Sin categoría", 
-        "posicion": p.posicion if p.posicion else "", 
-        
+        "posicion": getattr(p, 'posicion', ""), 
         "fichaMedicaUrl": getattr(p, 'fichaMedicaUrl', getattr(p, 'ficha_medica_url', "")), 
         "fichaMedicaNombre": getattr(p, 'fichaMedicaNombre', getattr(p, 'ficha_medica_nombre', "")), 
         "fichaMedicaFecha": getattr(p, 'fichaMedicaFecha', getattr(p, 'ficha_medica_fecha', "")), 
@@ -107,30 +87,37 @@ def get_players(request):
 
 @router.post("/players")
 def save_player(request, data: PlayerSchema):
-    profile = save_user_profile(data, 'jugador')
-    profile.categoria = data.categoria
-    profile.posicion = data.posicion
-    
-    # Guardado a prueba de errores
-    if hasattr(profile, 'ficha_medica_url'):
-        profile.ficha_medica_url = data.fichaMedicaUrl
-        profile.ficha_medica_nombre = data.fichaMedicaNombre
-        profile.ficha_medica_fecha = data.fichaMedicaFecha
-    else:
-        profile.fichaMedicaUrl = data.fichaMedicaUrl
-        profile.fichaMedicaNombre = data.fichaMedicaNombre
-        profile.fichaMedicaFecha = data.fichaMedicaFecha
+    try:
+        profile = save_user_profile(data, 'jugador')
+        profile.categoria = data.categoria
+        profile.posicion = data.posicion
         
-    profile.justificaciones = data.justificaciones
-    
-    if hasattr(profile, 'fichaje_instalments'):
-        profile.fichaje_instalments = data.fichajeInstalments
-    else:
-        profile.fichajeInstalments = data.fichajeInstalments
+        # Ficha Médica
+        if hasattr(profile, 'ficha_medica_url'):
+            profile.ficha_medica_url = data.fichaMedicaUrl
+            profile.ficha_medica_nombre = data.fichaMedicaNombre
+            profile.ficha_medica_fecha = data.fichaMedicaFecha
+        else:
+            profile.fichaMedicaUrl = data.fichaMedicaUrl
+            profile.fichaMedicaNombre = data.fichaMedicaNombre
+            profile.fichaMedicaFecha = data.fichaMedicaFecha
+            
+        profile.justificaciones = data.justificaciones
         
-    profile.save()
-    return {"success": True}
-# ==================== PARTIDOS ====================
+        # MAGIA: Convertimos los objetos Pydantic a Diccionarios nativos para que Django no colapse
+        cuotas_limpias = [c.dict() for c in data.fichajeInstalments] if data.fichajeInstalments else []
+        
+        if hasattr(profile, 'fichaje_instalments'):
+            profile.fichaje_instalments = cuotas_limpias
+        else:
+            profile.fichajeInstalments = cuotas_limpias
+            
+        profile.save()
+        return {"success": True}
+    except Exception as e:
+        print(f"❌ ERROR AL GUARDAR JUGADOR: {e}")
+        return {"success": False}
+
 # ==================== PARTIDOS Y TERCER TIEMPO ====================
 @router.get("/matches")
 def get_matches(request):
@@ -139,8 +126,6 @@ def get_matches(request):
     for m in matches:
         datos = {k: v for k, v in m.__dict__.items() if k != '_state' and k != 'id'}
         datos["id"] = str(m.id)
-        
-        # Si el partido tiene un Tercer Tiempo asociado, le inyectamos los datos y la matemática
         if hasattr(m, 'tercer_tiempo'):
             datos["tercerTiempo"] = {
                 "costo_comida": m.tercer_tiempo.costo_comida,
@@ -155,18 +140,23 @@ def get_matches(request):
 
 @router.post("/tercer-tiempo")
 def save_tercer_tiempo(request, data: TercerTiempoSchema):
-    partido = Match.objects.get(id=data.partido_id)
-    tt, created = TercerTiempo.objects.get_or_create(partido=partido)
-    tt.costo_comida = data.costo_comida
-    tt.costo_bebida = data.costo_bebida
-    tt.otros_gastos = data.otros_gastos
-    tt.alias_transferencia = data.alias_transferencia
-    tt.save()
-    return {"success": True}
+    try:
+        partido = Match.objects.get(id=data.partido_id)
+        tt, created = TercerTiempo.objects.get_or_create(partido=partido)
+        tt.costo_comida = data.costo_comida
+        tt.costo_bebida = data.costo_bebida
+        tt.otros_gastos = data.otros_gastos
+        tt.alias_transferencia = data.alias_transferencia
+        tt.save()
+        return {"success": True}
+    except Exception as e:
+        print(f"❌ ERROR AL GUARDAR TERCER TIEMPO: {e}")
+        return {"success": False}
 
 @router.post("/matches")
 def save_match(request, data: MatchSchema):
-    Match.objects.update_or_create(id=data.id if data.id and data.id.isdigit() else None, defaults=data.dict(exclude={'id'}))
+    real_id = data.id if data.id and str(data.id).isdigit() else None
+    Match.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
     return {"success": True}
 
 # ==================== RUTINAS ====================
@@ -176,7 +166,8 @@ def get_routines(request):
 
 @router.post("/routines")
 def save_routine(request, data: RoutineSchema):
-    GymRoutine.objects.update_or_create(id=data.id if data.id and data.id.isdigit() else None, defaults=data.dict(exclude={'id'}))
+    real_id = data.id if data.id and str(data.id).isdigit() else None
+    GymRoutine.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
     return {"success": True}
 
 # ==================== ASISTENCIAS ====================
@@ -186,15 +177,22 @@ def get_attendances(request):
 
 @router.post("/attendances")
 def save_attendance(request, data: AttendanceSchema):
-    Attendance.objects.update_or_create(id=data.id if data.id and data.id.isdigit() else None, defaults=data.dict(exclude={'id'}))
+    real_id = data.id if data.id and str(data.id).isdigit() else None
+    Attendance.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
     return {"success": True}
 
-# ==================== CAMPAÑAS ====================
+# ==================== CAMPAÑAS (ACÁ ESTABA EL ERROR FANTASMA) ====================
 @router.get("/campaigns", response=List[CampaignSchema])
 def get_campaigns(request):
     return [{"id": str(c.id), **{k: v for k, v in c.__dict__.items() if k != '_state' and k != 'id'}} for c in FundraiserCampaign.objects.all()]
 
 @router.post("/campaigns")
 def save_campaign(request, data: CampaignSchema):
-    FundraiserCampaign.objects.update_or_create(id=data.id if data.id and data.id.isdigit() else None, defaults=data.dict(exclude={'id'}))
-    return {"success": True}
+    try:
+        # Extraemos el ID numérico si existe, sino le pasamos None para que cree una campaña nueva
+        real_id = data.id if data.id and str(data.id).isdigit() else None
+        FundraiserCampaign.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
+        return {"success": True}
+    except Exception as e:
+        print(f"❌ ERROR AL GUARDAR CAMPAÑA: {e}")
+        return {"success": False}

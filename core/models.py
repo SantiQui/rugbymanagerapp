@@ -1,4 +1,3 @@
-# core/models.py
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -13,61 +12,78 @@ class UserProfile(models.Model):
     documento = models.CharField(max_length=20, unique=True)
     role = models.CharField(max_length=15, choices=ROLES)
     telefono = models.CharField(max_length=50, blank=True, null=True)
-    fecha_nacimiento = models.DateField(blank=True, null=True)
+    fecha_nacimiento = models.CharField(max_length=50, blank=True, null=True) # Pasado a CharField para evitar fallos de formato
     
-   # --- LA QUE ES EN PLURAL (Para Manager/Profesor) ---
-    categorias = models.JSONField(default=list, blank=True)
+    # --- Para Manager/Profesor ---
+    categorias = models.JSONField(default=list, blank=True, null=True)
     
-    # --- LA QUE ES EN SINGULAR (Para Jugadores) -> ¡ESTA ES LA QUE TE FALTA! ---
+    # --- Para Jugadores ---
     categoria = models.CharField(max_length=50, blank=True, null=True)
-    # --- Datos de Jugador ---
     posicion = models.CharField(max_length=50, blank=True, null=True)
     peso = models.FloatField(default=0.0)
     altura = models.FloatField(default=0.0)
     activo = models.BooleanField(default=True)
-    ficha_medica_url = models.URLField(blank=True, null=True)
-    ficha_medica_fecha = models.DateField(blank=True, null=True)
+    
+    # --- Variables exactas como las manda React ---
+    fichaMedicaUrl = models.CharField(max_length=255, blank=True, null=True)
+    fichaMedicaNombre = models.CharField(max_length=255, blank=True, null=True)
+    fichaMedicaFecha = models.CharField(max_length=50, blank=True, null=True)
+    justificaciones = models.JSONField(default=list, blank=True, null=True)
+    fichajeInstalments = models.JSONField(default=list, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.last_name}, {self.user.first_name} - {self.role}"
 
+
 class Match(models.Model):
-    fecha = models.DateTimeField()
-    rival = models.CharField(max_length=100)
-    lugar = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=50)
-    estado = models.CharField(max_length=50, default='Programado')
-    resultado_club = models.IntegerField(default=0)
-    resultado_rival = models.IntegerField(default=0)
-    titulares = models.JSONField(default=list, blank=True) # Lista de IDs
-    suplentes = models.JSONField(default=list, blank=True) # Lista de IDs
-    estadisticas = models.JSONField(default=dict, blank=True)
+    fecha = models.CharField(max_length=50, blank=True, null=True)
     hora = models.CharField(max_length=20, blank=True, null=True)
+    rival = models.CharField(max_length=100, blank=True, null=True)
+    lugar = models.CharField(max_length=100, blank=True, null=True)
+    categoria = models.CharField(max_length=50, blank=True, null=True)
+    estado = models.CharField(max_length=50, default='Programado')
     resultadoClub = models.IntegerField(blank=True, null=True)
     resultadoRival = models.IntegerField(blank=True, null=True)
+    titulares = models.JSONField(default=list, blank=True, null=True)
+    suplentes = models.JSONField(default=list, blank=True, null=True)
+    estadisticas = models.JSONField(default=dict, blank=True, null=True)
+
 
 class GymRoutine(models.Model):
     titulo = models.CharField(max_length=200)
-    fecha_asignacion = models.DateField()
-    ejercicios = models.JSONField(default=list) # [{nombre, series, repeticiones, notas}]
+    descripcion = models.TextField(blank=True, null=True)
+    ejercicios = models.JSONField(default=list, blank=True, null=True)
+    profesorId = models.CharField(max_length=50, blank=True, null=True)
+    profesorNombre = models.CharField(max_length=150, blank=True, null=True)
+    jugadorId = models.CharField(max_length=50, blank=True, null=True)
+    posicion = models.CharField(max_length=50, blank=True, null=True)
+    fechaAsignacion = models.CharField(max_length=50, blank=True, null=True)
+
 
 class Attendance(models.Model):
-    fecha = models.DateField()
-    categoria = models.CharField(max_length=50)
-    jugadores_presentes = models.JSONField(default=list) # Lista de IDs de jugadores
+    fecha = models.CharField(max_length=50, blank=True, null=True)
+    categoria = models.CharField(max_length=50, blank=True, null=True)
+    tipo = models.CharField(max_length=100, blank=True, null=True)
+    asistentes = models.JSONField(default=list, blank=True, null=True)
+    justificados = models.JSONField(default=list, blank=True, null=True)
+
 
 class FundraiserCampaign(models.Model):
-    titulo = models.CharField(max_length=200)
-    objetivo = models.DecimalField(max_digits=10, decimal_places=2)
-    recaudado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    fecha_limite = models.DateField()
+    titulo = models.CharField(max_length=200, blank=True, null=True)
+    descripcion = models.TextField(blank=True, null=True)
+    fechaDesde = models.CharField(max_length=50, blank=True, null=True)
+    fechaHasta = models.CharField(max_length=50, blank=True, null=True)
+    fotoFlyer = models.CharField(max_length=50, blank=True, null=True)
+    cantidadPorJugador = models.IntegerField(default=10)
+    ventasRegistradas = models.JSONField(default=dict, blank=True, null=True)
+
 
 class TercerTiempo(models.Model):
     partido = models.OneToOneField(Match, on_delete=models.CASCADE, related_name='tercer_tiempo')
     costo_comida = models.FloatField(default=0)
     costo_bebida = models.FloatField(default=0)
     otros_gastos = models.FloatField(default=0)
-    alias_transferencia = models.CharField(max_length=150)
+    alias_transferencia = models.CharField(max_length=150, blank=True, null=True)
 
     @property
     def costo_total(self):
@@ -75,12 +91,9 @@ class TercerTiempo(models.Model):
 
     @property
     def costo_por_jugador(self):
-        # Cuenta cuántos jugadores hay en las listas JSON de titulares y suplentes
         titulares = self.partido.titulares if isinstance(self.partido.titulares, list) else []
         suplentes = self.partido.suplentes if isinstance(self.partido.suplentes, list) else []
-        
         cantidad_jugadores = len(titulares) + len(suplentes)
-        
         if cantidad_jugadores > 0:
             return self.costo_total / cantidad_jugadores
         return 0
