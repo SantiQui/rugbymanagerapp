@@ -93,8 +93,6 @@ DATABASES = {
 }
 
 # 4. CORS (Para que el Vercel de adelante pueda hablar con este back)
-INSTALLED_APPS.append('corsheaders')
-MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
 
 CORS_ALLOWED_ORIGINS = [
     "https://rugbymanager.vercel.app", # Tu URL de Vercel
