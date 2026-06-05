@@ -82,10 +82,19 @@ import dj_database_url
 DEBUG = os.environ.get('RENDER') is None
 
 # 2. Hosts permitidos: Render te pedirá esto
+# 1. Agregalo a los Hosts permitidos (SIN el https://)
 ALLOWED_HOSTS = [
     'rugbymanagerapp.onrender.com', 
+    'guaycuruesrugbymanager.com.ar',  # <--- TU NUEVO DOMINIO OFICIAL
     'localhost', 
     '127.0.0.1'
+]
+
+# 2. Agregalo a los Orígenes de CORS permitidos (CON el https://)
+CORS_ALLOWED_ORIGINS = [
+    "https://guaycuruesrugbymanager.com.ar", # <--- TU NUEVA URL OFICIAL
+    "https://rugbymanager-sandy.vercel.app", # (podés dejar el viejo de Vercel por si acaso)
+    "http://localhost:5173",
 ]
 DATABASES = {
     'default': dj_database_url.config(
