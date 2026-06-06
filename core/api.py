@@ -1,5 +1,6 @@
 from ninja import Router
 from typing import List
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as django_login
 from .models import UserProfile, Match, GymRoutine, Attendance, FundraiserCampaign, TercerTiempo
@@ -51,6 +52,15 @@ def save_manager(request, data: ManagerSchema):
     profile.save()
     return {"success": True}
 
+# NUEVO: Ruta para borrar Manager
+@router.delete("/managers/{manager_id}/")
+def delete_manager(request, manager_id: int):
+    profile = get_object_or_404(UserProfile, id=manager_id, role='manager')
+    user = profile.user
+    profile.delete()
+    user.delete() # Borramos también el usuario de Django para no dejar basura
+    return {"success": True}
+
 # ==================== PROFESORES ====================
 @router.get("/professors", response=List[ProfessorSchema])
 def get_professors(request):
@@ -68,7 +78,16 @@ def save_professor(request, data: ProfessorSchema):
     profile.save()
     return {"success": True}
 
-# ==================== JUGADORES (ACÁ ESTABA EL ERROR DE CUOTAS) ====================
+# NUEVO: Ruta para borrar Profesor
+@router.delete("/professors/{prof_id}/")
+def delete_professor(request, prof_id: int):
+    profile = get_object_or_404(UserProfile, id=prof_id, role='profesor')
+    user = profile.user
+    profile.delete()
+    user.delete()
+    return {"success": True}
+
+# ==================== JUGADORES ====================
 @router.get("/players", response=List[PlayerSchema])
 def get_players(request):
     profiles = UserProfile.objects.filter(role='jugador')
@@ -118,6 +137,15 @@ def save_player(request, data: PlayerSchema):
         print(f"❌ ERROR AL GUARDAR JUGADOR: {e}")
         return {"success": False}
 
+# NUEVO: Ruta para borrar Jugador
+@router.delete("/players/{player_id}/")
+def delete_player(request, player_id: int):
+    profile = get_object_or_404(UserProfile, id=player_id, role='jugador')
+    user = profile.user
+    profile.delete()
+    user.delete()
+    return {"success": True}
+
 # ==================== PARTIDOS Y TERCER TIEMPO ====================
 @router.get("/matches")
 def get_matches(request):
@@ -159,6 +187,13 @@ def save_match(request, data: MatchSchema):
     Match.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
     return {"success": True}
 
+# NUEVO: Ruta para borrar Partido
+@router.delete("/matches/{match_id}/")
+def delete_match(request, match_id: int):
+    match = get_object_or_404(Match, id=match_id)
+    match.delete()
+    return {"success": True}
+
 # ==================== RUTINAS ====================
 @router.get("/routines", response=List[RoutineSchema])
 def get_routines(request):
@@ -181,7 +216,7 @@ def save_attendance(request, data: AttendanceSchema):
     Attendance.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
     return {"success": True}
 
-# ==================== CAMPAÑAS (ACÁ ESTABA EL ERROR FANTASMA) ====================
+# ==================== CAMPAÑAS ====================
 @router.get("/campaigns", response=List[CampaignSchema])
 def get_campaigns(request):
     return [{"id": str(c.id), **{k: v for k, v in c.__dict__.items() if k != '_state' and k != 'id'}} for c in FundraiserCampaign.objects.all()]
@@ -189,7 +224,6 @@ def get_campaigns(request):
 @router.post("/campaigns")
 def save_campaign(request, data: CampaignSchema):
     try:
-        # Extraemos el ID numérico si existe, sino le pasamos None para que cree una campaña nueva
         real_id = data.id if data.id and str(data.id).isdigit() else None
         FundraiserCampaign.objects.update_or_create(id=real_id, defaults=data.dict(exclude={'id'}))
         return {"success": True}
